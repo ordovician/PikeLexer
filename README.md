@@ -1,0 +1,3 @@
+An experiment with implementing a lexer and later a parser based on the ideas presented by Rob Pike at a [talk](https://www.youtube.com/watch?v=HxaD_trXwRE) at the Sydney Google Technology User Group. The idea is to use function objects to represent state rather than using a big switch statement with integers for state.
+
+The code in its present form can mainly be regarded as notes rather than working code.
