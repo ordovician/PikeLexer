@@ -1,14 +1,7 @@
 # Lexer inspired Rob Pike's talk
 
-
-type Lexer
-	name  :: String # Just used for error
-	input :: String # string being scanned
-	start :: Int64  # start position of this item (lexeme)
-	pos   :: Int64  # current position in the input
-	ppos  :: Int64  # position of previous character in case of backup
-	# channel of scanned tokens. Don't need this as we just call produce()?
-end
+include("token.jl")
+include("lexer.jl")
 
 # A state is a function which uses the lexer to decide what the next state will be.
 # The next state being another function returning a state function.
@@ -20,10 +13,6 @@ function state(lexer)
 	end
 end
 
-# Marker for indicating there is no more input
-function end_state(l :: Lexer)
-	return end_state
-end
 
 function start_state(l :: Lexer)
 	while true
@@ -54,21 +43,6 @@ function error_state(l :: Lexer, error_msg :: String)
 	return end_state
 end
 
-# Get next character
-function next(l :: Lexer)
-	l.ppos = pos
-	if l.pos >= endof(l.input)
-		return EOF
-	end
-	ch, l.pos = next(l.input, l.pos)
-	return ch
-end
-
-function peek(l :: Lexer)
-	ch = next(l)
-	backup(l)
-	ch
-end
 
 
 function inside_dict_state(l :: Lexer)
@@ -86,21 +60,3 @@ function inside_dict_state(l :: Lexer)
 	end
 end
 
-# run lexes the input by executing state functions until we reach the end_state which
-# is just a marker for no more input to look for.
-function run(l :: Lexer)
-	state = start_state
-	while state != end_state
-		state = state(l)
-	end
-end
-
-function emit(l :: Lexer, t :: TokenType)
-	produce(Token(t, l.input[l.start:l.pos]))
-	l.start = l.pos + 1
-end
-
-function lex(name :: String, input :: String)
-	l = Lexer(name, input)
-	l, @task l.run()
-end
