@@ -1,8 +1,11 @@
+import Base.show
+
 # Token types
-const NUMBER = 1
-const STRING = 2
-const UNKNOWN = 3
-const EOF = 4
+const NUMBER 	= 1
+const STRING 	= 2
+const IDENT 	= 3		# Idnetifier
+const UNKNOWN 	= 10
+const EOF 		= 11
 const WHITESPACE = int(' ')
 const LPAREN = int('(')
 const RPAREN = int(')')
