@@ -5,15 +5,13 @@ type Lexer
 	input	:: String # string being scanned
 	start	:: Int64  # start position of this item (lexeme)
 	pos		:: Int64  # current position in the input
-	task	:: Task
-	function Lexer(input :: String, lex_start :: Function)
+	function Lexer(input :: String)
 		l = new("", input, start(input), start(input))
-		l.task = @task run(l, lex_start)
 		return l
 	end
 end
 
-const EOFChar = -1
+const EOFChar = char(-1)
 
 # Get next character
 function next_char(l :: Lexer)
@@ -30,9 +28,17 @@ function backup_char(l :: Lexer)
 end
 
 function peek_char(l :: Lexer)
-	ch = next_char(l)
-	backup_char(l)
-	ch
+	if l.pos > endof(l.input)
+		return EOFChar
+	end
+	return l.input[l.pos]
+end
+
+function current_char(l :: Lexer)
+	if l.pos <= 1
+		error("Can't ask for current char before first char has been fetched")
+	end
+	return l.input[prevind(l.input, l.pos)]
 end
 
 # Check if next character is one of among the valid ones
@@ -50,23 +56,27 @@ function accept_char_run(l :: Lexer, valid :: String)
 	backup_char(l)
 end
 
+function lexeme(l)
+	endind = prevind(l.input, l.pos)
+	l.input[l.start:endind]	
+end
+
+token(l :: Lexer, t :: TokenType) = Token(t, lexeme(l))
+
 function emit_token(l :: Lexer, t :: TokenType)
-	produce(Token(t, l.input[l.start:l.pos]))
-	l.start = l.pos
+	tok = token(l, t)
+	l.start = l.pos		
+	return tok
 end
 
 # Skip the current token. E.g. because it is whitespace
-function ignore_token(l :: Lexer)
+function ignore_lexeme(l :: Lexer)
 	l.start = l.pos
 end
 
-function next_token(l :: Lexer)
-	consume(l.task)
-end
-
-
 function error(l :: Lexer, error_msg :: String)
-	produce(Token(ErrorToken, error_msg))
+	t = Token(ErrorToken, error_msg)
+	produce(t :: Token)
 	return lex_end
 end
 
@@ -85,5 +95,6 @@ function run(l :: Lexer, lex_start :: Function)
 	while state != lex_end
 		state = state(l)
 	end
+	return Token(EOF, "")
 end
 

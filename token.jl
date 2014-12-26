@@ -48,4 +48,4 @@ end
 ==(t1::Token, t2::Token) = t1.tokentype == t2.tokentype && t1.lexeme == t2.lexeme
 
 # mapping from token type to a string representation
-const token_names = [NUMBER => "Number", STRING => "String", UNKNOWN => "Unknown", EOF => "EOF"] 
+const token_names = [NUMBER => "Number", STRING => "String", IDENT => "Identifier", UNKNOWN => "Unknown", EOF => "EOF"] 

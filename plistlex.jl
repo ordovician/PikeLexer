@@ -1,5 +1,11 @@
+
 function lex_plist(input :: String)
-	Lexer(input, lex_start)
+	l = Lexer(input)
+	function start_state(l :: Lexer)
+		produce(lex_plist(l))
+		return start_state
+	end
+	@task run(l, start_state)
 end
 
 function lex_whitespace(l :: Lexer)
@@ -7,7 +13,6 @@ function lex_whitespace(l :: Lexer)
 		next_char(l)
 	end
 	emit_token(l, WHITESPACE)
-	return lex_start
 end
 
 function lex_number(l :: Lexer)
@@ -32,12 +37,11 @@ end
 
 function lex_string(l :: Lexer)
 	accept_char(l, "\"")
-	l.start = l.pos
 	while true
 		ch = next_char(l)
 		if ch == '"'
 			backup_char(l)
-			if l.input[l.pos] != '\\'
+			if current_char(l) != '\\'
 				break
 			end
 			accept_char("\"")
@@ -45,26 +49,45 @@ function lex_string(l :: Lexer)
 			return error(l, "EOF when reading string literal")
 		end
 	end
-	emit_token(l, STRING)
-	accept_char(l, "\"")	
+	accept_char(l, "\"")
+	tok = Token(STRING, strip(lexeme(l), '"'))
+	l.start = l.pos
+	return tok	
 end
 
-function lex_start(l :: Lexer)
-	while peek_char(l) != EOFChar
-		ch = next_char(l)
-		if ch in "{}(),=;"
-			emit_token(l, int(ch))
-		elseif isdigit(ch) || ch in "-+"
-			backup_char(l)
-			return lex_number
-		elseif ch == '"'
-			backup_char(l)
-			return lex_string
-		elseif isalpha(ch)
-			l.pos += findfirst(c -> !isalnum(c), l.input[l.pos:end]) - 2
-			emit_token(l, IDENT)						
-		end
+function lex_indentifier(l :: Lexer)
+	ch = next_char(l)
+	if !isalpha(ch)
+		return error(l, "Indentifier must start with alphabetical character")
 	end
-	emit(l, EOF)
-	return lex_end
+	i = findfirst(l.input[l.pos:end]) do ch
+		!isalnum(ch)
+	end
+	if i == 0
+		l.pos = next(l.input, endof(l.input))
+		emit_token(l, IDENT)
+		return lex_end
+	else
+		l.pos += i - 1
+		emit_token(l, IDENT)
+	end
+end
+
+function lex_plist(l :: Lexer)
+	ch = peek_char(l)
+
+	if ch == EOFChar
+		emit_token(l, EOF)			
+	elseif ch in "{}(),=;"
+		next_char(l)
+		emit_token(l, int(ch))
+	elseif isdigit(ch) || ch in "-+"
+		lex_number(l)
+	elseif ch == '"'
+		lex_string(l)
+	elseif isalpha(ch)
+		lex_indentifier(l)	
+	elseif isblank(ch)
+		lex_whitespace(l)
+	end
 end
