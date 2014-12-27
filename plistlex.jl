@@ -64,13 +64,11 @@ function lex_indentifier(l :: Lexer)
 		!isalnum(ch)
 	end
 	if i == 0
-		l.pos = next(l.input, endof(l.input))
-		emit_token(l, IDENT)
-		return lex_end
+		_, l.pos = next(l.input, endof(l.input))
 	else
 		l.pos += i - 1
-		emit_token(l, IDENT)
 	end
+	emit_token(l, IDENT)	
 end
 
 function lex_plist(l :: Lexer)
