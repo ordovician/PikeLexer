@@ -1,3 +1,17 @@
+# Token types
+const NUMBER 	= :Number
+const STRING 	= :String
+const IDENT 	= :Identifier		# Idnetifier
+const UNKNOWN 	= :Unknown
+const EOF 		= :EOF
+const WHITESPACE = :Whitespace
+const LPAREN = symbol('(')
+const RPAREN = symbol(')')
+const LBRACE = symbol('{')
+const RBRACE = symbol('}')
+const COMMA = symbol(',')
+const EQUAL = symbol('=')
+const SEMICOLON = symbol(';')
 
 function lex_plist(input :: String)
 	l = Lexer(input)
@@ -79,7 +93,7 @@ function lex_plist(l :: Lexer)
 		emit_token(l, EOF)			
 	elseif ch in "{}(),=;"
 		next_char(l)
-		emit_token(l, int(ch))
+		emit_token(l, symbol(ch))
 	elseif isdigit(ch) || ch in "-+"
 		lex_number(l)
 	elseif ch == '"'
