@@ -1,0 +1,9 @@
+{
+  Dogs = (
+    {
+      Name = "Scooby Doo";
+      Age = 43;
+      Colors = (Brown, Black);
+    }
+  );
+}
