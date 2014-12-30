@@ -8,11 +8,11 @@ function lex_plist(input :: String)
 	@task run(l, start_state)
 end
 
-function lex_whitespace(l :: Lexer)
+function ignore_whitespace(l :: Lexer)
 	while peek_char(l) in " \t\n"
 		next_char(l)
 	end
-	emit_token(l, WHITESPACE)
+	l.start = l.pos
 end
 
 function lex_number(l :: Lexer)
@@ -72,6 +72,7 @@ function lex_indentifier(l :: Lexer)
 end
 
 function lex_plist(l :: Lexer)
+	ignore_whitespace(l)
 	ch = peek_char(l)
 
 	if ch == EOFChar
