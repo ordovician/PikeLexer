@@ -141,13 +141,3 @@ function lex_string(l :: Lexer)
 	return tok	
 end
 
-# run lexes the input by executing state functions until we reach the end_state which
-# is just a marker for no more input to look for.
-function run(l :: Lexer, lex_start :: Function)
-	state = lex_start
-	while state != lex_end
-		state = state(l)
-	end
-	return Token(EOF, "")
-end
-
