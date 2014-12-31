@@ -1,5 +1,11 @@
 import Base.error
 
+# Common Token types for all lexers
+const NUMBER 	= :Number
+const STRING 	= :String
+const EOF 		= :EOF
+const UNKNOWN 	= :Unknown
+
 type Lexer
 	name 	:: String # Just used for error
 	input	:: String # string being scanned
@@ -87,6 +93,53 @@ function lex_end(l :: Lexer)
 	return lex_end
 end
 
+# Lex functions common to most lexers
+function ignore_whitespace(l :: Lexer)
+	while peek_char(l) in " \t\n"
+		next_char(l)
+	end
+	l.start = l.pos
+end
+
+function lex_number(l :: Lexer)
+	# leading sign is optional, but we'll accept it
+	accept_char(l, "-+")
+	
+	# Could be a hex number, assume it is not first
+	digits = "0123456789"
+	if accept_char(l, "0") && accept("xX")
+		digits *= "abcdefABCDEF"
+	end
+	accept_char_run(l, digits)
+	if accept_char(l, ".")
+		accept_char_run(l, digits)
+	end
+	if accept_char(l, "eE")
+		accept(l, "-+")
+		accept_char_run(l, "0123456789")
+	end
+	emit_token(l, NUMBER)
+end
+
+function lex_string(l :: Lexer)
+	accept_char(l, "\"")
+	while true
+		ch = next_char(l)
+		if ch == '"'
+			backup_char(l)
+			if current_char(l) != '\\'
+				break
+			end
+			accept_char("\"")
+		elseif ch == EOFChar
+			return error(l, "EOF when reading string literal")
+		end
+	end
+	accept_char(l, "\"")
+	tok = Token(STRING, strip(lexeme(l), '"'))
+	l.start = l.pos
+	return tok	
+end
 
 # run lexes the input by executing state functions until we reach the end_state which
 # is just a marker for no more input to look for.
