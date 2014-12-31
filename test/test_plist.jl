@@ -1,4 +1,4 @@
-using PikeLexer
+using PListLexer
 using Base.Test
 
 l = Lexer(open(readall, "test/example.plist"))
