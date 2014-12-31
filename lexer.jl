@@ -5,6 +5,7 @@ const NUMBER 	= :Number
 const STRING 	= :String
 const EOF 		= :EOF
 const UNKNOWN 	= :Unknown
+const ERROR		= :Error
 
 type Lexer
 	name 	:: String # Just used for error
@@ -81,9 +82,7 @@ function ignore_lexeme(l :: Lexer)
 end
 
 function error(l :: Lexer, error_msg :: String)
-	t = Token(ErrorToken, error_msg)
-	produce(t :: Token)
-	return lex_end
+	return Token(ERROR, error_msg), lex_end
 end
 
 ####### Lexer States ################################################
@@ -101,7 +100,7 @@ function ignore_whitespace(l :: Lexer)
 	l.start = l.pos
 end
 
-function lex_number(l :: Lexer)
+function scan_number(l :: Lexer)
 	# leading sign is optional, but we'll accept it
 	accept_char(l, "-+")
 	
@@ -121,7 +120,7 @@ function lex_number(l :: Lexer)
 	emit_token(l, NUMBER)
 end
 
-function lex_string(l :: Lexer)
+function scan_string(l :: Lexer)
 	accept_char(l, "\"")
 	while true
 		ch = next_char(l)

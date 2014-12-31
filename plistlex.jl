@@ -43,9 +43,9 @@ function lex_plist(l :: Lexer)
 		next_char(l)
 		emit_token(l, symbol(ch))
 	elseif isdigit(ch) || ch in "-+"
-		lex_number(l)
+		scan_number(l)
 	elseif ch == '"'
-		lex_string(l)
+		scan_string(l)
 	elseif isalpha(ch)
 		lex_indentifier(l)	
 	elseif isblank(ch)

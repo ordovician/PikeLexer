@@ -17,6 +17,7 @@ const MNEMONIC = :Mnemonic		# name of keywords under sections in LAS terminology
 const UNIT		= :Unit			# unit like meter or feet
 const SECTION 	= :Section		# section name (a heading for mnemonics)
 const DESCRIPTION = :Description # description of the purpose of mnemonic
+const COMMENT	= :Comment		# comment like this
 
 # Delimeters between data values
 const COLON = symbol(':')
@@ -66,9 +67,9 @@ function lex_header_value(l :: Lexer)
 	ignore_whitespace(l)
 	ch = peek_char(l)
 	if isdigit(ch)
-		lex_number(l), lex_description
+		scan_number(l), lex_description
 	else
-		lex_string(l), lex_description
+		scan_string(l), lex_description
 	end
 end
 
@@ -104,9 +105,9 @@ function lex_inside_data_section(l :: Lexer)
 	end	
 
 	if isdigit(ch)
-		lex_number(l), lex_inside_data_section
+		scan_number(l), lex_inside_data_section
 	else
-		lex_string(l), lex_inside_data_section
+		scan_string(l), lex_inside_data_section
 	end
 end
 
@@ -116,6 +117,7 @@ function lex_las(l :: Lexer)
 
 	if ch == EOFChar
 		return emit_token(l, EOF)
+	elseif ch == '#'
 	end	
 
 	return lex_section(l)
