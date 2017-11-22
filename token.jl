@@ -1,18 +1,23 @@
-import Base.show
+import Base: ==
 
-typealias TokenType Symbol
+export Token
 
-type Token
-    tokentype::TokenType
+"""
+A string of code is turned into an array of Tokens by the lexer. Each
+symbol or word in code is represented as a Token.
+"""
+struct Token
+    kind::TokenType
     lexeme::String
 end
-
-function Token(tokentype::TokenType) 
-    Token(tokentype, string(tokentype))
+   
+function Token(kind::TokenType)
+    ch = Char(kind)
+    if ch in "{}(),=;"
+        Token(kind, string(ch))
+    else
+       Token(kind, "") 
+    end
 end
 
-function show(io::IO, t::Token)  # avoids recursion into prev and next
-    print(io, "$(t.tokentype) \"$(t.lexeme)\"")
-end
-
-==(t1::Token, t2::Token) = t1.tokentype == t2.tokentype && t1.lexeme == t2.lexeme
+==(t1::Token, t2::Token) = t1.kind == t2.kind && t1.lexeme == t2.lexeme
