@@ -17,19 +17,13 @@ end
 
 function lex_section(l::Lexer)
 	accept_char(l, "~")
-	l.start = l.pos # Dont' want to include ~ in the name
+	ignore_lexeme(l) # Dont' want to include ~ in the name
     accept_char_run(l) do ch
         isalpha(ch) || ch == ' '
     end
-    s = lexeme(l)
-    emit_token(l, SECTION, s)
+    emit_token(l, SECTION)
     ignore_whitespace(l)
-
-	if startswith(uppercase(s), "A")
-		return lex_inside_data_section
-	else
-		return lex_inside_header_section
-	end
+    return lex_las
 end
 
 function lex_mnemonic(l::Lexer)
@@ -37,102 +31,113 @@ function lex_mnemonic(l::Lexer)
 	if !isalpha(ch)
 		return error(l, "Mnemonic must start with A-Z")
 	end
-	l.pos = search(l.input, '.', l.pos)
-	if isspace(peek_char(l))
-		emit_token(l, MNEMONIC)
-        return lex_header_value
+	pos = search(l.input, '.', l.pos)
+	if pos == 0
+		return error(l, "Mnemonic must be terminated with a '.''")
 	else
-		emit_token(l, MNEMONIC)
-        return lex_unit
+		l.pos = pos
+		emit_token(l, MNEMONIC, strip(lexeme(l)))
+		next_char(l)
+		if isspace(peek_char(l))
+			return lex_header_value
+		else
+			backup_char(l)
+			return lex_unit
+		end
 	end
 end
 
 function lex_unit(l::Lexer)
+	accept_char(l, ".")
+	ignore_lexeme(l)
 	ch = next_char(l)
 	if !isalpha(ch)
 		return error(l, "Unit must start with A-Z")
-	end	
+	end
 	invalid_char(c) = !isalnum(c) && c != '/'
 	l.pos = find_token_end(invalid_char, l)
 	emit_token(l, UNIT)
-    return lex_header_value		
+    return lex_header_value
 end
 
-function lex_header_value(l :: Lexer)
+function lex_header_value(l::Lexer)
 	ignore_whitespace(l)
-	ch = peek_char(l)
-	if isdigit(ch)
-		put!(l.tokens, scan_number(l))
-        return lex_description
+	pos = search(l.input, ':', l.pos)
+	if pos == 0
+		error(l, "The parameter line is missing a colon, so we can't determine the parameter value")
 	else
-		put!(l.tokens, scan_string(l))
-        return lex_description
+		l.pos = pos
+		s = strip(lexeme(l))
+		if !isempty(s)
+			emit_token(l, DATA, s)
+		end
+		lex_description
 	end
 end
 
 function lex_description(l::Lexer)
 	ignore_whitespace(l)
 	accept_char(l, ":")
-	l.start = l.pos # Dont' want to include : in the description
-	l.pos = search(l.input, "\n", l.pos)
-	emit_token(l, DESCRIPTION)
-    lex_inside_header_section
-end
-
-function lex_inside_header_section(l::Lexer)
-	ignore_whitespace(l)
-	ch = peek_char(l)
-
-	if ch == EOFChar
-	    emit_token(l, EOF)
-        return lex_end
-	end	
-
-	if ch == '~'
-		return lex_section
+	ignore_lexeme(l)     # Dont' want to include : in the description
+	pos = search(l.input, '\n', l.pos)
+	if pos == 0
+		error(l, "Parameter description should be terminated by a newline")
 	else
-		return lex_mnemonic
-	end
-end
-
-function lex_inside_data_section(l :: Lexer)
-	ignore_whitespace(l)
-	ch = peek_char(l)
-
-	if ch == EOFChar
-		return emit_token(l, EOF)
-	end	
-
-	if isdigit(ch)
-		put!(l.tokens, scan_number(l)) 
-        return lex_inside_data_section
-	else
-		put!(l.tokens, scan_string(l))
-        return lex_inside_data_section
+		l.pos = pos
+		emit_token(l, DESCRIPTION, strip(lexeme(l)))
+		lex_las
 	end
 end
 
 function lex_comment(l::Lexer)
     accept_char(l, '#')
     accept_char_run(ch->ch != '\n', l)
-    emit_token(l, COMMENT)
-    return las_lex  
+    emit_token(l, COMMENT, strip(lexeme(l)))
+    return lex_las
+end
+
+function lex_endline(l::Lexer)
+	for i in 1:10
+		ch = next_char(l)
+		if isspace(ch) && ch != '\n'
+			ignore_lexeme(l)
+		elseif ch == EOFChar
+			emit_token(l, EOF)
+			return lex_end
+		elseif ch == '\n'
+			emit_token(l, ENDL)
+			return lex_las
+		else
+			backup_char(l)
+			return lex_las
+		end
+	end
 end
 
 function lex_las(l::Lexer)
     while true
+        ignore_whitespace(l)
         ch = peek_char(l)
-
     	if ch == EOFChar
     		emit_token(l, EOF)
-            return lex_end	
-        elseif isspace(ch)
-            next_char(l)
-            continue 
+            return lex_end
     	elseif ch == '#'
             return lex_comment
-        else	
+        elseif ch == '~'
             return lex_section
+        elseif ch == '"'
+			if scan_string(l)
+				emit_token(l, STRING)
+				return lex_endline
+            else
+				error(l, "Invalid quoted string")
+			end
+        elseif isalpha(ch)
+            return lex_mnemonic
+        elseif isdigit(ch)
+			scan_number(l)
+			emit_token(l, NUMBER)
+			return lex_endline
         end
     end
 end

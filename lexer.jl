@@ -8,7 +8,7 @@ export  Lexer, Token,
         emit_token, lexeme
 
 const EOFChar = Char(0xC0) # Using illegal UTF8 as sentinel
-     
+
 # Because it is practical to use single chars as tokens sometimes
 convert(::Type{TokenType}, ch::Char) = TokenType(Int(ch))
 convert(::Type{Char}, t::TokenType)  = Char(Int(t))
@@ -20,7 +20,7 @@ mutable struct Lexer
 	pos		:: Int    # current position in the input
     tokens  :: Channel{Token}
 	function Lexer(input::String)
-		l = new(input, start(input), start(input), Channel{Token}(4))
+		l = new(input, start(input), start(input), Channel{Token}(32))
 		return l
 	end
 end
@@ -60,7 +60,7 @@ function accept_char(l::Lexer, valid::AbstractString)
     if next_char(l) in valid
 		return true
 	end
-    if l.pos <= endof(l.input) 
+    if l.pos <= endof(l.input)
         backup_char(l)
     end
 	return false
@@ -74,7 +74,7 @@ function accept_char_run(pred::Function, l::Lexer)
 	while pred(next_char(l)) end
 	# `l.pos` should usually point to character after the one we read.
     # if we get to the end and backup, then we will point to the one we read last instead
-    if l.pos <= endof(l.input) 
+    if l.pos <= endof(l.input)
         backup_char(l)
     end
 end
@@ -82,14 +82,14 @@ end
 "Get lexeme that has been lexed thus far"
 function lexeme(l::Lexer)
 	stop = prevind(l.input, l.pos)
-	l.input[l.start:stop]	
+	l.input[l.start:stop]
 end
 
 "Send token of type `t` with lexeme `s` to channel `l.tokens`"
 function emit_token(l::Lexer, t::TokenType, s::AbstractString)
 	token = Token(t, s)
     put!(l.tokens, token)
-    l.start = l.pos	
+    l.start = l.pos
 end
 
 emit_token(l::Lexer, t::TokenType) = emit_token(l, t, lexeme(l))
@@ -116,16 +116,23 @@ end
 
 ################### Scan Common Types ###################
 """
-Scans a number and returns the token, rather than emitting it to the token channel.
-The reason for this is that we might want to create different lexers, with different
-states and they will typically all need to be able to lex a number. So it makes sense
-to be able to lex a number without changing state and pushing tokens into the tokens
-channel.
+Advancing the position in the lexer input passed any number.
+It means `lexeme(lexer)` will return a number.
+To emit a number token you can just write:
+
+    if scan_number(l)
+        emit_token(l, NUMBER)
+    end
+
+The reason for doing it this way, is that it retains flexibility
+in with which lexer state should be associated with lexing a number.
+Several kinds of lexer will need to lex a number. So we want
+reusable functions.
 """
 function scan_number(l::Lexer)
 	# leading sign is optional, but we'll accept it
 	accept_char(l, "-+")
-	
+
 	# Could be a hex number, assume it is not first
 	digits = "0123456789"
 	if accept_char(l, "0") && accept_char(l, "xX")
@@ -139,37 +146,39 @@ function scan_number(l::Lexer)
 		accept(l, "-+")
 		accept_char_run(l, "0123456789")
 	end
-    
-    t = Token(NUMBER, lexeme(l))
-    l.start = l.pos
-    return t  
+    return true
 end
 
+"""
+Advancing the position in the lexer input passed any quoted string.
+It means `lexeme(lexer)` will return a quoted string. Example:
+
+    if scan_string(l)
+        emit_token(l, STRING)
+    end
+"""
 function scan_string(l::Lexer)
 	accept_char(l, "\"")
 	while true
 		ch = next_char(l)
-		if ch == '"'
-			backup_char(l)
-			if current_char(l) != '\\'
-				break
-			end
-			accept_char("\"")
+        if ch == '\\'
+            c = next_char(l)
+            if c == EOFChar || c == '\n'
+                return false
+            end
+		elseif ch == '"'
+            break
 		elseif ch == EOFChar
-			return Token(ERROR, "EOF when reading string literal")
+			return false
 		end
 	end
-	accept_char(l, "\"")
-    
-	t = Token(STRING, strip(lexeme(l), '"'))
-    l.start = l.pos
-    return t
+	return true
 end
 
 function scan_identifier(l::Lexer)
 	ch = next_char(l)
 	if !isalpha(ch)
-		return Token(ERROR, "Indentifier must start with alphabetical character")
+		return false
 	end
 	i = findfirst(ch->!isalnum(ch), l.input[l.pos:end])
 	if i == 0
@@ -177,9 +186,7 @@ function scan_identifier(l::Lexer)
 	else
 		l.pos += i - 1
 	end
-    t = Token(IDENT, lexeme(l))
-    l.start = l.pos
-    return t      
+    return true
 end
 
 ################### Lexer Common ###################
@@ -201,4 +208,3 @@ function run(l::Lexer, start::Function)
     end
     close(l.tokens)
 end
-    

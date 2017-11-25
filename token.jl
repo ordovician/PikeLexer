@@ -9,14 +9,22 @@ symbol or word in code is represented as a Token.
 struct Token
     kind::TokenType
     lexeme::String
+    function Token(kind::TokenType, s::AbstractString)
+        # Don't want to store the quotes on quoted strings.
+        if length(s) > 1
+            new(kind, strip(s, '"'))
+        else
+            new(kind, s)
+        end
+    end
 end
-   
+
 function Token(kind::TokenType)
     ch = Char(kind)
     if ch in "{}(),=;"
         Token(kind, string(ch))
     else
-       Token(kind, "") 
+       Token(kind, "")
     end
 end
 

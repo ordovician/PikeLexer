@@ -3,7 +3,8 @@ export  lex_number, lex_string, lex_identifier, lex_hexbinary,
 
 "Lex a number. Could be hexadecimal, scientific or start with +-"
 function lex_number(l::Lexer)
-    put!(l.tokens, scan_number(l))
+    scan_number(l)
+    emit_token(l, NUMBER)
     lex_basic
 end
 
@@ -15,21 +16,26 @@ function lex_hexbinary(l::Lexer)
     if accept_char(l, ">")
         emit_token(l, HEXBINARY, filter(isxdigit, lexeme(l)))
     else
-        return error(l, "Hexadecimal data must end with >")    
+        return error(l, "Hexadecimal data must end with >")
     end
     return lex_basic
 end
 
 "Lex a string enclosed in \" quotes"
 function lex_string(l::Lexer)
-    put!(l.tokens, scan_string(l))
-    return lex_basic
+    if scan_string(l)
+        emit_token(l, STRING)
+        lex_basic
+    else
+        error(l, "Not a valid quoted string")
+    end
 end
 
 "lex an identifier such as a variable or function name"
 function lex_identifier(l::Lexer)
-    put!(l.tokens, scan_identifier(l))
-    return lex_basic	
+    scan_identifier(l)
+    emit_token(l, IDENT)
+    return lex_basic
 end
 
 function lex_basic(l::Lexer)
@@ -39,7 +45,7 @@ function lex_basic(l::Lexer)
 
     	if ch == EOFChar
     		emit_token(l, EOF)
-            return lex_end			
+            return lex_end
     	elseif ch in "{}(),=;"
     		next_char(l)
     		emit_token(l, TokenType(ch))
@@ -50,7 +56,7 @@ function lex_basic(l::Lexer)
     	elseif isalpha(ch)
     		return lex_identifier
         elseif ch == '<'
-            return lex_hexbinary	
+            return lex_hexbinary
     	end
     end
 end
