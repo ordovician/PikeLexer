@@ -2,10 +2,11 @@ import Base: error, convert
 
 export  Lexer, Token,
         lex, lex_end, scan_number, scan_string,
-        ignore_lexeme, ignore_whitespace,
+        ignore, ignore_whitespace,
         next_char, backup_char, peek_char, current_char,
         accept_char, accept_char_run,
-        emit_token, lexeme
+        emit_token, lexeme,
+        next_token, drain
 
 const EOFChar = Char(0xC0) # Using illegal UTF8 as sentinel
 
@@ -95,7 +96,7 @@ end
 emit_token(l::Lexer, t::TokenType) = emit_token(l, t, lexeme(l))
 
 "Skip the current token. E.g. because it is whitespace"
-function ignore_lexeme(l::Lexer)
+function ignore(l::Lexer)
 	l.start = l.pos
 end
 
@@ -198,7 +199,7 @@ end
 function lex(input::AbstractString, start::Function)
     l = Lexer(input)
     @schedule run(l, start)
-    (l, l.tokens)
+    return l
 end
 
 function run(l::Lexer, start::Function)
@@ -208,3 +209,6 @@ function run(l::Lexer, start::Function)
     end
     close(l.tokens)
 end
+
+next_token(l::Lexer) = take!(l.tokens)
+drain(l::Lexer) = collect(l.tokens)

@@ -17,7 +17,7 @@ end
 
 function lex_section(l::Lexer)
 	accept_char(l, "~")
-	ignore_lexeme(l) # Dont' want to include ~ in the name
+	ignore(l) # Dont' want to include ~ in the name
     accept_char_run(l) do ch
         isalpha(ch) || ch == ' '
     end
@@ -49,7 +49,7 @@ end
 
 function lex_unit(l::Lexer)
 	accept_char(l, ".")
-	ignore_lexeme(l)
+	ignore(l)
 	ch = next_char(l)
 	if !isalpha(ch)
 		return error(l, "Unit must start with A-Z")
@@ -78,7 +78,7 @@ end
 function lex_description(l::Lexer)
 	ignore_whitespace(l)
 	accept_char(l, ":")
-	ignore_lexeme(l)     # Dont' want to include : in the description
+	ignore(l)     # Dont' want to include : in the description
 	pos = search(l.input, '\n', l.pos)
 	if pos == 0
 		error(l, "Parameter description should be terminated by a newline")
@@ -100,7 +100,7 @@ function lex_endline(l::Lexer)
 	for i in 1:10
 		ch = next_char(l)
 		if isspace(ch) && ch != '\n'
-			ignore_lexeme(l)
+			ignore(l)
 		elseif ch == EOFChar
 			emit_token(l, EOF)
 			return lex_end
